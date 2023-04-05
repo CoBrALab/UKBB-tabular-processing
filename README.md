@@ -45,7 +45,7 @@ You will need the `Codings.tsv` and `Data_Dictionary_Showcase.tsv` from
 
 And finally run the script:
 ```sh
-$ python melted_UKBB_extract.py --config-file myconfig.yaml --output-prefix mysubset_
+$ python melted_UKBB_extract.py --config-file myconfig.yaml --data-file current.melt.arrow --output-prefix mysubset_
 ```
 
 ### Outputs

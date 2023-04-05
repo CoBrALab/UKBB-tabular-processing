@@ -29,6 +29,9 @@ $ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", dtypes={
                 "FieldValue": pl.Utf8,
             },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression='zstd')'
 ```
+## Requirements
+
+The python script requires the [polars package](https://github.com/pola-rs/polars)
 
 ## Extracting data
 
@@ -43,9 +46,27 @@ as appropriate, see embedded documentation of the file for details.
 You will need the `Codings.tsv` and `Data_Dictionary_Showcase.tsv` from
 [UKBB Showcase Accessing Data](https://biobank.ndph.ox.ac.uk/showcase/exinfo.cgi?src=AccessingData)
 
+### Command-line use
+
 And finally run the script:
 ```sh
 $ python melted_UKBB_extract.py --config-file myconfig.yaml --data-file current.melt.arrow --output-prefix mysubset_
+```
+
+### Use inside python
+
+The function `extract_UKBB_tabular_data` takes in a `dict` of key-value pairs containing the same entries as the `YAML`
+config file, as well as the paths to the input files:
+
+```python
+def extract_UKBB_tabular_data(config=None, data_file=None, dictionary_file=None, coding_file=None, verbose=False)
+```
+
+The function returns 3 or 4 polars DataFrames depending on the `config['wide']` setting:
+```python
+        return data, data_wide, dictionary, codings
+        # Or when wide=False
+        return data, None, dictionary, codings
 ```
 
 ### Outputs

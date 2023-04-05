@@ -1,0 +1,3 @@
+[submodule "ukb_awk"]
+	path = ukb_awk
+	url = git@github.com:gdevenyi/ukb_awk.git

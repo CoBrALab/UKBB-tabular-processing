@@ -1,10 +1,16 @@
 #!/usr/bin/env python
+from __future__ import annotations
 import logging
 import sys
 
+from config import Config
 
 def extract_UKBB_tabular_data(
-    config=None, data_file=None, dictionary_file=None, coding_file=None, verbose=False
+    config: Config,
+    data_file: str | None = None,
+    dictionary_file: str | None = None,
+    coding_file: str | None =None,
+    verbose: str | None = False
 ):
     import polars as pl
     import pathlib as p
@@ -329,16 +335,7 @@ if __name__ == "__main__":
         ],
     )
 
-    try:
-        with open(args.config_file, "r") as stream:
-            try:
-                config = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                logging.exception(exc)
-                sys.exit(1)
-    except FileNotFoundError as exc:
-        logging.exception(exc)
-        sys.exit(1)
+    config = Config.from_yaml(args.config_file)
 
     # Print the loaded config
     logging.info("Input configuration")

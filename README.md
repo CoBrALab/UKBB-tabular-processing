@@ -21,7 +21,8 @@ this performs a streaming conversion which also significantly reduces memory
 requirements:
 
 ```sh
-$ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", dtypes={
+$ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", separator="\t",
+             dtypes={
                 "SubjectID": pl.Int64,
                 "FieldID": pl.Int64,
                 "InstanceID": pl.Int64,

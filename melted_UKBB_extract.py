@@ -14,7 +14,6 @@ def extract_UKBB_tabular_data(
 ):
     import polars as pl
     import pathlib as p
-    import logging as log
 
     pl.Config.set_verbose(verbose)
 
@@ -273,7 +272,6 @@ def extract_UKBB_tabular_data(
 
 if __name__ == "__main__":
     import argparse
-    import yaml
     import pprint
     import sys
 

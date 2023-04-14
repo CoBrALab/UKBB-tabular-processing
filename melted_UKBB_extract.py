@@ -5,12 +5,13 @@ import sys
 
 from config import Config
 
+
 def extract_UKBB_tabular_data(
     config: Config,
     data_file: str | None = None,
     dictionary_file: str | None = None,
-    coding_file: str | None =None,
-    verbose: str | None = False
+    coding_file: str | None = None,
+    verbose: str | None = False,
 ):
     import polars as pl
     import pathlib as p
@@ -317,11 +318,15 @@ if __name__ == "__main__":
         {"tsv", "csv", "arrow", "parquet", "feather"}
     )
     if unknown_output_formats:
-        logging.error(f"Unknown output formats {pprint.pformat(unknown_output_formats)}")
+        logging.error(
+            f"Unknown output formats {pprint.pformat(unknown_output_formats)}"
+        )
         sys.exit(1)
 
-    if 'csv' in args.output_formats:
-        logging.warn("Due to embedded quotes in some fields, CSV format is not recommended")
+    if "csv" in args.output_formats:
+        logging.warn(
+            "Due to embedded quotes in some fields, CSV format is not recommended"
+        )
 
     logging.basicConfig(
         format="%(asctime)s %(message)s",
@@ -351,7 +356,7 @@ if __name__ == "__main__":
         if format == "tsv":
             logging.info(f"Writing {args.output_prefix}narrow.tsv")
             data.write_csv(f"{args.output_prefix}narrow.tsv", separator="\t")
-        elif format == "arrow" or format == 'feather':
+        elif format == "arrow" or format == "feather":
             logging.info(f"Writing {args.output_prefix}narrow.{format}")
             data.write_ipc(f"{args.output_prefix}narrow.{format}", compression="zstd")
         elif format == "parquet":

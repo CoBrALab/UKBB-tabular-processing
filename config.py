@@ -66,7 +66,7 @@ class Config(UserDict):
 
     @classmethod
     def from_yaml(cls, config_file: str) -> Config:
-        """ return an instance of the class loaded from a YAML file. It is assumed the format is correct """
+        """return an instance of the class loaded from a YAML file. It is assumed the format is correct"""
         try:
             with open(config_file, "r") as stream:
                 try:
@@ -77,4 +77,3 @@ class Config(UserDict):
         except FileNotFoundError as exc:
             logging.exception(exc)
             sys.exit(1)
-

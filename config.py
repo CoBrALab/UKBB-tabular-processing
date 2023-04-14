@@ -61,8 +61,8 @@ class Config(UserDict):
     # When recode_wide_column_valuetype=true some values from recode_data_values=true
     # # some values will break setting column datatypes
     # # Substitute strings to values set below
-    convert_less_than_value_integer: Any
-    convert_less_than_value_continuous: Any
+    convert_less_than_value_integer: int
+    convert_less_than_value_continuous: int | float
 
     @classmethod
     def from_yaml(cls, config_file: str) -> Config:

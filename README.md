@@ -27,7 +27,7 @@ $ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", dtypes={
                 "InstanceID": pl.Int64,
                 "ArrayID": pl.Int64,
                 "FieldValue": pl.Utf8,
-            },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression='zstd')'
+            },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression="zstd")'
 ```
 ## Requirements
 

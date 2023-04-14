@@ -21,13 +21,14 @@ this performs a streaming conversion which also significantly reduces memory
 requirements:
 
 ```sh
-$ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", dtypes={
+$ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", separator="\t",
+             dtypes={
                 "SubjectID": pl.Int64,
                 "FieldID": pl.Int64,
                 "InstanceID": pl.Int64,
                 "ArrayID": pl.Int64,
                 "FieldValue": pl.Utf8,
-            },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression='zstd')'
+            },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression="zstd")'
 ```
 ## Requirements
 

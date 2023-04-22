@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import sys
 
+from typing import Optional
+
 import polars as pl
 import pathlib as p
 
@@ -10,13 +12,13 @@ from config import Config
 
 def extract_UKBB_tabular_data(
     config: Config,
-    data_file: str | None = None,
-    dictionary_file: str | None = None,
-    coding_file: str | None = None,
-    verbose: str | None = False,
+    data_file: str,
+    dictionary_file: str,
+    coding_file: str,
+    verbose: Optional[bool] = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 
-    pl.Config.set_verbose(verbose)
+    pl.Config.set_verbose(verbose == True)
 
     datatype_dictionary = {
         "Date": pl.Date,
@@ -74,7 +76,7 @@ def extract_UKBB_tabular_data(
     elif file_extension in [".arrow", ".feather"]:
         data = pl.scan_ipc(data_file)
 
-    # Filter rows based on SubjecIDs if provided
+    # Filter rows based on SubjectIDs if provided
     if config["SubjectIDs"]:
         data = data.filter(pl.col("SubjectID").is_in(config["SubjectIDs"]))
 
@@ -193,7 +195,7 @@ def extract_UKBB_tabular_data(
     # Temporary due to change in coding
     # data = data.drop_nulls(subset=["Field"])
 
-    # Replace FieldID with concatination of FieldID and Field
+    # Replace FieldID with concatenation of FieldID and Field
     if config["recode_field_names"]:
         data = data.with_columns(
             pl.concat_str([pl.col("Field"), pl.col("FieldID")], separator="_").alias(
@@ -252,7 +254,7 @@ def extract_UKBB_tabular_data(
                             pl.col(col).cast(datatype_dictionary[val_type])
                         )
                 except pl.exceptions.ComputeError as exe:
-                    logging.warning(exc)
+                    logging.warning(exe)
                     logging.warning(
                         f"Column {col} data type could not be set due to mixed value types"
                     )
@@ -294,7 +296,7 @@ if __name__ == "__main__":
         default="Data_Dictionary_Showcase.tsv",
     )
     parser.add_argument(
-        "--coding-file", help="UKBB conding file", default="Codings.tsv"
+        "--coding-file", help="UKBB coding file", default="Codings.tsv"
     )
     parser.add_argument(
         "--output-prefix", help="Prefix for output files", required=True

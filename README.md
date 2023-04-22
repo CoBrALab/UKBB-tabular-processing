@@ -56,18 +56,34 @@ $ python melted_UKBB_extract.py --config-file myconfig.yaml --data-file current.
 
 ### Use inside python
 
-The function `extract_UKBB_tabular_data` takes in a `dict` of key-value pairs containing the same entries as the `YAML`
+The function `extract_UKBB_tabular_data` has the following signature:
+
+ takes in a `dict` of key-value pairs containing the same entries as the `YAML`
 config file, as well as the paths to the input files:
 
 ```python
-def extract_UKBB_tabular_data(config=None, data_file=None, dictionary_file=None, coding_file=None, verbose=False)
+def extract_UKBB_tabular_data(
+    config: Config,
+    data_file: str | None = None,
+    dictionary_file: str | None = None,
+    coding_file: str | None = None,
+    verbose: str | None = False,
+) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 ```
 
-The function returns 3 or 4 polars DataFrames depending on the `config['wide']` setting:
+The `Config` class inherits from `UserDict`, which is essentially just a wrapper around a regular dictionary that allows us to better document the properties of the dictionary. Therefore, you can simply use a regular dictionary with the sample properties as `Config`, which are documented inside of `config.py`. 
+
+If you want to load your config from a `yaml` file, you can do so as follows:
+
 ```python
-        return data, data_wide, dictionary, codings
-        # Or when wide=False
-        return data, None, dictionary, codings
+config = Config.from_yaml('config.template.yaml')
+```
+The function returns 3 or 4 polars DataFrames depending on the `config['wide']` setting. 
+
+```python
+return data, data_wide, dictionary, codings
+# Or when wide=False
+return data, None, dictionary, codings
 ```
 
 ### Outputs

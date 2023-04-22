@@ -3,8 +3,10 @@ from __future__ import annotations
 import logging
 import sys
 
-from config import Config
+import polars as pl
+import pathlib as p
 
+from config import Config
 
 def extract_UKBB_tabular_data(
     config: Config,
@@ -12,9 +14,7 @@ def extract_UKBB_tabular_data(
     dictionary_file: str | None = None,
     coding_file: str | None = None,
     verbose: str | None = False,
-):
-    import polars as pl
-    import pathlib as p
+) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 
     pl.Config.set_verbose(verbose)
 

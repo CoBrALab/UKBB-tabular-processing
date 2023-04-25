@@ -8,7 +8,7 @@ from typing import Optional
 import polars as pl
 import pathlib as p
 
-from config import Config
+from config import Config, load_config
 
 def extract_UKBB_tabular_data(
     config: Config,
@@ -340,7 +340,7 @@ if __name__ == "__main__":
         ],
     )
 
-    config = Config.from_yaml(args.config_file)
+    config = load_config(args.config_file)
 
     # Print the loaded config
     logging.info("Input configuration")

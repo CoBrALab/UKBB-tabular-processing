@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from collections import UserDict
-from typing import Any
+from typing import Any, TypedDict
 
 import logging
 import sys
 
 import yaml
 
-
-class Config(UserDict):
-    """defines the structure of the config object to be passed to the function extract_UKBB_tabular_data"""
+class Config(TypedDict):
+    """defines the structure of the config dict to be passed to the function extract_UKBB_tabular_data"""
 
     ## Filtering section
 
@@ -64,16 +62,17 @@ class Config(UserDict):
     convert_less_than_value_integer: int
     convert_less_than_value_continuous: int | float
 
-    @classmethod
-    def from_yaml(cls, config_file: str) -> Config:
-        """return an instance of the class loaded from a YAML file. It is assumed the format is correct"""
-        try:
-            with open(config_file, "r") as stream:
-                try:
-                    return cls(yaml.safe_load(stream))
-                except yaml.YAMLError as exc:
-                    logging.exception(exc)
-                    sys.exit(1)
-        except FileNotFoundError as exc:
-            logging.exception(exc)
-            sys.exit(1)
+
+
+def load_config(config_file: str) -> Config:
+    """Returns a config dict loaded from a YAML file. It is assumed the format is correct"""
+    try:
+        with open(config_file, "r") as stream:
+            try:
+                return yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                logging.exception(exc)
+                sys.exit(1)
+    except FileNotFoundError as exc:
+        logging.exception(exc)
+        sys.exit(1)

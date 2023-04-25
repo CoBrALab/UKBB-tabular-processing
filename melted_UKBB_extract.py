@@ -15,10 +15,10 @@ def extract_UKBB_tabular_data(
     data_file: str,
     dictionary_file: str,
     coding_file: str,
-    verbose: Optional[bool] = False,
+    verbose: bool = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 
-    pl.Config.set_verbose(verbose == True)
+    pl.Config.set_verbose(verbose)
 
     datatype_dictionary = {
         "Date": pl.Date,

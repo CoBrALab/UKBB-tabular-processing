@@ -58,9 +58,6 @@ $ python melted_UKBB_extract.py --config-file myconfig.yaml --data-file current.
 
 The function `extract_UKBB_tabular_data` has the following signature:
 
- takes in a `dict` of key-value pairs containing the same entries as the `YAML`
-config file, as well as the paths to the input files:
-
 ```python
 def extract_UKBB_tabular_data(
     config: Config,
@@ -71,19 +68,24 @@ def extract_UKBB_tabular_data(
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 ```
 
-The `Config` class inherits from `UserDict`, which is essentially just a wrapper around a regular dictionary that allows us to better document the properties of the dictionary. Therefore, you can simply use a regular dictionary with the sample properties as `Config`, which are documented inside of `config.py`. 
-
-If you want to load your config from a `yaml` file, you can do so as follows:
-
-```python
-config = Config.from_yaml('config.template.yaml')
-```
-The function returns 3 or 4 polars DataFrames depending on the `config['wide']` setting. 
+The return signature depends on the `config['wide']` setting. Unfortunately, as Python < 3.11 does not support `TypedDict` with generic types, this cannot be (easily) expressed with Python hints. Once Python 3.10 is no longer supported, this could be updated with a generic type.
 
 ```python
 return data, data_wide, dictionary, codings
 # Or when wide=False
 return data, None, dictionary, codings
+```
+
+The `Config` class is a `TypedDict`, which is just a regular dictionary with defined types. This allows us to better document the properties of the dictionary. The properties of this dictionary are provided in `config.py`. If you want to have autocompletion in your IDE, you can create a config dict as follows:
+
+```python
+config: Config = {...}
+```
+
+If you want to load your config from a `yaml` file, you can do so as follows:
+
+```python
+config = load_config('config.template.yaml')
 ```
 
 ### Outputs

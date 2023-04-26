@@ -1,14 +1,22 @@
 #!/usr/bin/env python
+from __future__ import annotations
 import logging
 import sys
 
+from typing import Optional
+
+import polars as pl
+import pathlib as p
+
+from config import Config, load_config
 
 def extract_UKBB_tabular_data(
-    config=None, data_file=None, dictionary_file=None, coding_file=None, verbose=False
-):
-    import polars as pl
-    import pathlib as p
-    import logging as log
+    config: Config,
+    data_file: str,
+    dictionary_file: str,
+    coding_file: str,
+    verbose: bool = False,
+) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 
     pl.Config.set_verbose(verbose)
 
@@ -68,7 +76,7 @@ def extract_UKBB_tabular_data(
     elif file_extension in [".arrow", ".feather"]:
         data = pl.scan_ipc(data_file)
 
-    # Filter rows based on SubjecIDs if provided
+    # Filter rows based on SubjectIDs if provided
     if config["SubjectIDs"]:
         data = data.filter(pl.col("SubjectID").is_in(config["SubjectIDs"]))
 
@@ -187,7 +195,7 @@ def extract_UKBB_tabular_data(
     # Temporary due to change in coding
     # data = data.drop_nulls(subset=["Field"])
 
-    # Replace FieldID with concatination of FieldID and Field
+    # Replace FieldID with concatenation of FieldID and Field
     if config["recode_field_names"]:
         data = data.with_columns(
             pl.concat_str([pl.col("Field"), pl.col("FieldID")], separator="_").alias(
@@ -246,7 +254,7 @@ def extract_UKBB_tabular_data(
                             pl.col(col).cast(datatype_dictionary[val_type])
                         )
                 except pl.exceptions.ComputeError as exe:
-                    logging.warning(exc)
+                    logging.warning(exe)
                     logging.warning(
                         f"Column {col} data type could not be set due to mixed value types"
                     )
@@ -267,7 +275,6 @@ def extract_UKBB_tabular_data(
 
 if __name__ == "__main__":
     import argparse
-    import yaml
     import pprint
     import sys
 
@@ -289,7 +296,7 @@ if __name__ == "__main__":
         default="Data_Dictionary_Showcase.tsv",
     )
     parser.add_argument(
-        "--coding-file", help="UKBB conding file", default="Codings.tsv"
+        "--coding-file", help="UKBB coding file", default="Codings.tsv"
     )
     parser.add_argument(
         "--output-prefix", help="Prefix for output files", required=True
@@ -313,11 +320,15 @@ if __name__ == "__main__":
         {"tsv", "csv", "arrow", "parquet", "feather"}
     )
     if unknown_output_formats:
-        logging.error(f"Unknown output formats {pprint.pformat(unknown_output_formats)}")
+        logging.error(
+            f"Unknown output formats {pprint.pformat(unknown_output_formats)}"
+        )
         sys.exit(1)
 
-    if 'csv' in args.output_formats:
-        logging.warn("Due to embedded quotes in some fields, CSV format is not recommended")
+    if "csv" in args.output_formats:
+        logging.warn(
+            "Due to embedded quotes in some fields, CSV format is not recommended"
+        )
 
     logging.basicConfig(
         format="%(asctime)s %(message)s",
@@ -329,16 +340,7 @@ if __name__ == "__main__":
         ],
     )
 
-    try:
-        with open(args.config_file, "r") as stream:
-            try:
-                config = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                logging.exception(exc)
-                sys.exit(1)
-    except FileNotFoundError as exc:
-        logging.exception(exc)
-        sys.exit(1)
+    config = load_config(args.config_file)
 
     # Print the loaded config
     logging.info("Input configuration")
@@ -356,7 +358,7 @@ if __name__ == "__main__":
         if format == "tsv":
             logging.info(f"Writing {args.output_prefix}narrow.tsv")
             data.write_csv(f"{args.output_prefix}narrow.tsv", separator="\t")
-        elif format == "arrow" or format == 'feather':
+        elif format == "arrow" or format == "feather":
             logging.info(f"Writing {args.output_prefix}narrow.{format}")
             data.write_ipc(f"{args.output_prefix}narrow.{format}", compression="zstd")
         elif format == "parquet":

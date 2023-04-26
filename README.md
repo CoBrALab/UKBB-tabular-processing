@@ -56,18 +56,36 @@ $ python melted_UKBB_extract.py --config-file myconfig.yaml --data-file current.
 
 ### Use inside python
 
-The function `extract_UKBB_tabular_data` takes in a `dict` of key-value pairs containing the same entries as the `YAML`
-config file, as well as the paths to the input files:
+The function `extract_UKBB_tabular_data` has the following signature:
 
 ```python
-def extract_UKBB_tabular_data(config=None, data_file=None, dictionary_file=None, coding_file=None, verbose=False)
+def extract_UKBB_tabular_data(
+    config: Config,
+    data_file: str | None = None,
+    dictionary_file: str | None = None,
+    coding_file: str | None = None,
+    verbose: str | None = False,
+) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 ```
 
-The function returns 3 or 4 polars DataFrames depending on the `config['wide']` setting:
+The return signature depends on the `config['wide']` setting.
+
 ```python
-        return data, data_wide, dictionary, codings
-        # Or when wide=False
-        return data, None, dictionary, codings
+return data, data_wide, dictionary, codings
+# Or when wide=False
+return data, None, dictionary, codings
+```
+
+The `Config` class is a `TypedDict`, which is just a regular dictionary with defined types. This allows us to better document the properties of the dictionary. The properties of this dictionary are provided in `config.py`. If you want to have autocompletion in your IDE, you can create a config dict as follows:
+
+```python
+config: Config = {...}
+```
+
+If you want to load your config from a `yaml` file, you can do so as follows:
+
+```python
+config = load_config('config.template.yaml')
 ```
 
 ### Outputs
@@ -99,3 +117,8 @@ optional arguments:
                         Specify list of output file formats from tsv, arrow/feather, parquet, csv (default: ['tsv', 'arrow'])
   -v, --verbose         increase output verbosity (default: False)
 ```
+
+## TODO
+
+Regarding the return type of `extract_UKBB_tabular_data`, the function should ideally take a generic parameter for config that will determine the return type based on `config['wide']`. However, this is not possible in Python 3.10 ad below, as `TypedDict` cannot inherit from generic types ([see this for more info](https://github.com/python/cpython/issues/89026#issuecomment-1116093221)). Once Once Python 3.10 is no longer supported, this function could be updated with a generic type, so that the signature is inferred based on the value passed in for config.
+

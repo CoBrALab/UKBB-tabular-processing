@@ -68,7 +68,7 @@ def extract_UKBB_tabular_data(
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
 ```
 
-The return signature depends on the `config['wide']` setting. Unfortunately, as Python < 3.11 does not support `TypedDict` with generic types, this cannot be (easily) expressed with Python hints. Once Python 3.10 is no longer supported, this could be updated with a generic type.
+The return signature depends on the `config['wide']` setting.
 
 ```python
 return data, data_wide, dictionary, codings
@@ -117,3 +117,8 @@ optional arguments:
                         Specify list of output file formats from tsv, arrow/feather, parquet, csv (default: ['tsv', 'arrow'])
   -v, --verbose         increase output verbosity (default: False)
 ```
+
+## TODO
+
+Regarding the return type of `extract_UKBB_tabular_data`, the function should ideally take a generic parameter for config that will determine the return type based on `config['wide']`. However, this is not possible in Python 3.10 ad below, as `TypedDict` cannot inherit from generic types ([see this for more info](https://github.com/python/cpython/issues/89026#issuecomment-1116093221)). Once Once Python 3.10 is no longer supported, this function could be updated with a generic type, so that the signature is inferred based on the value passed in for config.
+

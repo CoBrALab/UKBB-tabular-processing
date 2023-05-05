@@ -10,14 +10,15 @@ import pathlib as p
 
 from config import Config, load_config
 
+
 def extract_UKBB_tabular_data(
     config: Config,
     data_file: str,
     dictionary_file: str,
     coding_file: str,
+    category_tree_file: str = None,
     verbose: bool = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
-
     pl.Config.set_verbose(verbose)
 
     datatype_dictionary = {
@@ -82,6 +83,22 @@ def extract_UKBB_tabular_data(
 
     # Expand FieldIDs if Categories are provided
     if config["Categories"]:
+        logging.info(
+            "Categories provided, recursing down Category tree to ensure all FieldIDs are discovered"
+        )
+        # UKBB categories are a tree, and data can be on any branch, need to recurse the tree
+        category_tree = pl.read_csv(category_tree_file, separator="\t")
+        old_length = 0
+        while len(config["Categories"]) > old_length:
+            old_length = len(config["Categories"])
+            config["Categories"].extend(
+                category_tree.filter(
+                    pl.col("parent_id").is_in(config["Categories"])
+                    & pl.col("child_id").is_in(config["Categories"]).is_not()
+                )
+                .get_column("child_id")
+                .to_list()
+            )
         config["FieldIDs"].extend(
             dictionary.filter(pl.col("Category").is_in(config["Categories"]))
             .select("FieldID")
@@ -89,6 +106,9 @@ def extract_UKBB_tabular_data(
             .to_series()
             .to_list()
         )
+        # Print the loaded config
+        logging.info("Input configuration after Category expansion")
+        logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows in data based on FieldID
     if config["FieldIDs"]:
@@ -295,8 +315,11 @@ if __name__ == "__main__":
         help="UKBB data dictionary showcase file",
         default="Data_Dictionary_Showcase.tsv",
     )
+    parser.add_argument("--coding-file", help="UKBB coding file", default="Codings.tsv")
     parser.add_argument(
-        "--coding-file", help="UKBB coding file", default="Codings.tsv"
+        "--category-tree-file",
+        help="UKBB Category tree file from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13",
+        default="13.txt",
     )
     parser.add_argument(
         "--output-prefix", help="Prefix for output files", required=True
@@ -321,7 +344,7 @@ if __name__ == "__main__":
     )
     if unknown_output_formats:
         logging.error(
-            f"Unknown output formats {pprint.pformat(unknown_output_formats)}"
+            f"Unknown output formats {pprint.pformat(unknown_output_formats, compact=True)}"
         )
         sys.exit(1)
 
@@ -344,13 +367,14 @@ if __name__ == "__main__":
 
     # Print the loaded config
     logging.info("Input configuration")
-    logging.info(pprint.pformat(config))
+    logging.info(pprint.pformat(config, compact=True))
 
     data, data_wide, dictionary, codings = extract_UKBB_tabular_data(
         config=config,
         data_file=args.data_file,
         dictionary_file=args.dictionary_file,
         coding_file=args.coding_file,
+        category_tree_file=args.category_tree_file,
         verbose=args.verbose,
     )
 

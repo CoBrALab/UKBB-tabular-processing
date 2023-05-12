@@ -47,6 +47,8 @@ as appropriate, see embedded documentation of the file for details.
 You will need the `Codings.tsv` and `Data_Dictionary_Showcase.tsv` from
 [UKBB Showcase Accessing Data](https://biobank.ndph.ox.ac.uk/showcase/exinfo.cgi?src=AccessingData)
 
+And the UKBB Category tree from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13
+
 ### Command-line use
 
 And finally run the script:
@@ -96,8 +98,7 @@ and `Data_Dictionary_Showcase.tsv` describing the data.
 
 ## Full Script Options
 ```sh
-usage: UKBB Data Extractor [-h] --config-file CONFIG_FILE --data-file DATA_FILE [--dictionary-file DICTIONARY_FILE] [--coding-file CODING_FILE]
-                           --output-prefix OUTPUT_PREFIX [--output-formats [OUTPUT_FORMATS ...]] [-v]
+usage: UKBB Data Extractor [-h] --config-file CONFIG_FILE --data-file DATA_FILE [--dictionary-file DICTIONARY_FILE] [--coding-file CODING_FILE] [--category-tree-file CATEGORY_TREE_FILE] --output-prefix OUTPUT_PREFIX [--output-formats [OUTPUT_FORMATS ...]] [-v]
 
 Transforms melted UKBB tabular data into a usable DataFrame for statistical analysis
 
@@ -110,7 +111,9 @@ optional arguments:
   --dictionary-file DICTIONARY_FILE
                         UKBB data dictionary showcase file (default: Data_Dictionary_Showcase.tsv)
   --coding-file CODING_FILE
-                        UKBB conding file (default: Codings.tsv)
+                        UKBB coding file (default: Codings.tsv)
+  --category-tree-file CATEGORY_TREE_FILE
+                        UKBB Category tree file from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13 (default: 13.txt)
   --output-prefix OUTPUT_PREFIX
                         Prefix for output files (default: None)
   --output-formats [OUTPUT_FORMATS ...]

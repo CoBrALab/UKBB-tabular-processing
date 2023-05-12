@@ -77,6 +77,16 @@ def extract_UKBB_tabular_data(
     elif file_extension in [".arrow", ".feather"]:
         data = pl.scan_ipc(data_file)
 
+    # Expand list of IDs from SubjectIDFiles
+    if config["SubjectIDFiles"]:
+        for file in config["SubjectIDFiles"]:
+            try:
+                with open(file, "r") as stream:
+                    config["SubjectIDs"].extend([ int(x) for x in stream.read().splitlines()] )
+            except FileNotFoundError as exc:
+                logging.exception(exc)
+                sys.exit(1)
+
     # Filter rows based on SubjectIDs if provided
     if config["SubjectIDs"]:
         data = data.filter(pl.col("SubjectID").is_in(config["SubjectIDs"]))

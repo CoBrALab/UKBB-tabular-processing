@@ -22,6 +22,7 @@ class Config(TypedDict):
 
     # Specific subjects to extract, null for all
     SubjectIDs: list[int] | list[None]
+    SubjectIDFiles: list[str] | list[None]
 
     # For fields with array components, null for all
     ArrayIDs: list[int] | list[None]

@@ -13,6 +13,9 @@ InstanceIDs:
 # Specific subjects to extract, null for all
 SubjectIDs:
   - null
+# Alternatively, one or more filenames which a flat lists of SubjectIDs
+SubjectIDFiles:
+  - null
 # For fields with array components, null for all
 ArrayIDs:
   - null

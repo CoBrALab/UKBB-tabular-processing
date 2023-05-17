@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 from __future__ import annotations
+
 import logging
+import pathlib as p
 import sys
 
-from typing import Optional
-
 import polars as pl
-import pathlib as p
 
 from config import Config, load_config
 
@@ -85,7 +84,9 @@ def extract_UKBB_tabular_data(
         for file in config["SubjectIDFiles"]:
             try:
                 with open(file, "r") as stream:
-                    config["SubjectIDs"].extend([ int(x) for x in stream.read().splitlines()] )
+                    config["SubjectIDs"].extend(
+                        [int(x) for x in stream.read().splitlines()]
+                    )
             except FileNotFoundError as exc:
                 logging.exception(exc)
                 sys.exit(1)
@@ -166,94 +167,81 @@ def extract_UKBB_tabular_data(
     if config["drop_empty_strings"]:
         data = data.filter(~(pl.col("FieldValue").str.lengths() == 0))
 
-    # Join
-    if (
-        config["recode_field_names"]
-        or config["recode_data_values"]
-        or config["drop_extra_NA_codes"]
-        or config["recode_wide_column_valuetypes"]
-        or config["convert_compound_to_list"]
-        or config["convert_less_than_value_integer"]
-        or config["convert_less_than_value_continuous"]
-    ):
-        # Join the data dictionary to the dataset
-        data = data.join(
-            dictionary.select(["FieldID", "Field", "ValueType", "Coding"]),
-            on="FieldID",
-            how="left",
-        )
-        data = data.join(
-            codings,
-            left_on=["Coding", "FieldValue"],
-            right_on=["Coding", "Value"],
-            how="left",
-        )
+    # Join the data dictionary to the dataset
+    data = data.join(
+        dictionary.select(["FieldID", "Field", "ValueType", "Coding"]),
+        on="FieldID",
+        how="left",
+    )
+    data = data.join(
+        codings,
+        left_on=["Coding", "FieldValue"],
+        right_on=["Coding", "Value"],
+        how="left",
+    )
 
-        # Hard-coded list of "no answer" codings to be dropped
-        if config["drop_extra_NA_codes"]:
-            data = data.filter(
-                ~(
-                    pl.col("Meaning").is_in(
-                        [
-                            "Do not know",
-                            "Prefer not to answer",
-                            "Time uncertain/unknown",
-                            "Test not completed",
-                            "Location could not be mapped",
-                            "Abandoned",
-                            "Next button not pressed",
-                        ]
-                    )
+    # Hard-coded list of "no answer" codings to be dropped
+    if config["drop_extra_NA_codes"]:
+        data = data.filter(
+            ~(
+                pl.col("Meaning").is_in(
+                    [
+                        "Do not know",
+                        "Prefer not to answer",
+                        "Time uncertain/unknown",
+                        "Test not completed",
+                        "Location could not be mapped",
+                        "Abandoned",
+                        "Next button not pressed",
+                    ]
                 )
             )
-            # Hard coded list of "bad data" numbers to drop
-            data = data.filter(
-                ~(
-                    pl.col("FieldValue")
-                    .cast(pl.Float64, strict=False)
-                    .is_in([99999, -9999999, -999999.000, -99999.000])
+        )
+        # Hard coded list of "bad data" numbers to drop
+        data = data.filter(
+            ~(
+                pl.col("FieldValue")
+                .cast(pl.Float64, strict=False)
+                .is_in([99999, -9999999, -999999.000, -99999.000])
+            )
+        )
+
+    # Take coding values and replace FieldValue with it if available
+    if config["recode_data_values"]:
+        data = data.with_columns(
+            pl.col("Meaning").fill_null(pl.col("FieldValue")).alias("FieldValue")
+        )
+
+    # Take coding values which start with "Less than" and replace with a numeric
+    if config["convert_less_than_value_integer"] is not None:
+        data = data.with_columns(
+            [
+                pl.when(
+                    (pl.col("FieldValue").str.starts_with("Less than"))
+                    & (pl.col("ValueType").is_in(["Integer"]))
                 )
-            )
+                .then(pl.lit(config["convert_less_than_value_integer"]))
+                .otherwise(pl.col("FieldValue"))
+                .keep_name()
+            ]
+        )
 
-        # Take coding values and replace FieldValue with it if available
-        if config["recode_data_values"]:
-            data = data.with_columns(
-                pl.col("Meaning").fill_null(pl.col("FieldValue")).alias("FieldValue")
-            )
+    if config["convert_less_than_value_continuous"] is not None:
+        data = data.with_columns(
+            [
+                pl.when(
+                    (pl.col("FieldValue").str.starts_with("Less than"))
+                    & (pl.col("ValueType") == "Continuous")
+                )
+                .then(pl.lit(config["convert_less_than_value_continuous"]))
+                .otherwise(pl.col("FieldValue"))
+                .keep_name()
+            ]
+        )
 
-        # Take coding values which start with "Less than" and replace with a numeric
-        if config["convert_less_than_value_integer"] is not None:
-            data = data.with_columns(
-                [
-                    pl.when(
-                        (pl.col("FieldValue").str.starts_with("Less than"))
-                        & (pl.col("ValueType").is_in(["Integer"]))
-                    )
-                    .then(pl.lit(config["convert_less_than_value_integer"]))
-                    .otherwise(pl.col("FieldValue"))
-                    .keep_name()
-                ]
-            )
-
-        if config["convert_less_than_value_continuous"] is not None:
-            data = data.with_columns(
-                [
-                    pl.when(
-                        (pl.col("FieldValue").str.starts_with("Less than"))
-                        & (pl.col("ValueType") == "Continuous")
-                    )
-                    .then(pl.lit(config["convert_less_than_value_continuous"]))
-                    .otherwise(pl.col("FieldValue"))
-                    .keep_name()
-                ]
-            )
-
-        data = data.drop("Coding")
-        data = data.drop("ValueType")
-        data = data.drop("Meaning")
-
-    # Temporary due to change in coding
-    # data = data.drop_nulls(subset=["Field"])
+    data = data.drop("Coding")
+    data = data.drop("ValueType")
+    data = data.drop("Meaning")
 
     # Replace FieldID with concatenation of FieldID and Field
     if config["recode_field_names"]:

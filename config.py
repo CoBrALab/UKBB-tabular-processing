@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
-
 import logging
 import sys
+from typing import Any, TypedDict
 
 import yaml
+
 
 class Config(TypedDict):
     """defines the structure of the config dict to be passed to the function extract_UKBB_tabular_data"""
@@ -66,7 +66,6 @@ class Config(TypedDict):
     # # Substitute strings to values set below
     convert_less_than_value_integer: int
     convert_less_than_value_continuous: int | float
-
 
 
 def load_config(config_file: str) -> Config:

@@ -34,12 +34,11 @@ def extract_UKBB_tabular_data(
 
     # Fix list of None in case of no specified requirements
     config["SubjectIDs"] = [i for i in config["SubjectIDs"] if i]
-    config["SubjectIDFiles"] = [i for i in config["SubjectIDs"] if i]
+    config["SubjectIDFiles"] = [i for i in config["SubjectIDFiles"] if i]
     config["FieldIDs"] = [i for i in config["FieldIDs"] if i]
     config["InstanceIDs"] = [i for i in config["InstanceIDs"] if i]
     config["ArrayIDs"] = [i for i in config["ArrayIDs"] if i]
     config["Categories"] = [i for i in config["Categories"] if i]
-
 
     dictionary = pl.scan_csv(
         dictionary_file,
@@ -90,6 +89,8 @@ def extract_UKBB_tabular_data(
             except FileNotFoundError as exc:
                 logging.exception(exc)
                 sys.exit(1)
+        logging.info("Input configuration after loading SubectIDFiles")
+        logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows based on SubjectIDs if provided
     if any(config["SubjectIDs"]):

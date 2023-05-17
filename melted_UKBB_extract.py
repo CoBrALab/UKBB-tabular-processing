@@ -17,6 +17,7 @@ def extract_UKBB_tabular_data(
     dictionary_file: str,
     coding_file: str,
     category_tree_file: str = None,
+    data_field_prop_file: str = None,
     verbose: bool = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
     pl.Config.set_verbose(verbose)
@@ -34,10 +35,12 @@ def extract_UKBB_tabular_data(
 
     # Fix list of None in case of no specified requirements
     config["SubjectIDs"] = [i for i in config["SubjectIDs"] if i]
+    config["SubjectIDFiles"] = [i for i in config["SubjectIDs"] if i]
     config["FieldIDs"] = [i for i in config["FieldIDs"] if i]
     config["InstanceIDs"] = [i for i in config["InstanceIDs"] if i]
     config["ArrayIDs"] = [i for i in config["ArrayIDs"] if i]
     config["Categories"] = [i for i in config["Categories"] if i]
+
 
     dictionary = pl.scan_csv(
         dictionary_file,
@@ -78,7 +81,7 @@ def extract_UKBB_tabular_data(
         data = pl.scan_ipc(data_file)
 
     # Expand list of IDs from SubjectIDFiles
-    if config["SubjectIDFiles"]:
+    if any(config["SubjectIDFiles"]):
         for file in config["SubjectIDFiles"]:
             try:
                 with open(file, "r") as stream:
@@ -88,11 +91,11 @@ def extract_UKBB_tabular_data(
                 sys.exit(1)
 
     # Filter rows based on SubjectIDs if provided
-    if config["SubjectIDs"]:
+    if any(config["SubjectIDs"]):
         data = data.filter(pl.col("SubjectID").is_in(config["SubjectIDs"]))
 
     # Expand FieldIDs if Categories are provided
-    if config["Categories"]:
+    if any(config["Categories"]):
         logging.info(
             "Categories provided, recursing down Category tree to ensure all FieldIDs are discovered"
         )
@@ -121,15 +124,42 @@ def extract_UKBB_tabular_data(
         logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows in data based on FieldID
-    if config["FieldIDs"]:
+    if any(config["FieldIDs"]):
         data = data.filter(pl.col("FieldID").is_in(config["FieldIDs"]))
 
+    if config["replicate_non_instanced"]:
+        # This succesfully duplicates data which should be present in all rows (non-instanced)
+        instanced = pl.scan_csv(data_field_prop_file, separator="\t")
+        data = data.join(
+            instanced.select(["field_id", "instanced"]),
+            left_on="FieldID",
+            right_on="field_id",
+            how="left",
+        )
+        repeat_length = len(config["InstanceIDs"]) if any(config["InstanceIDs"]) else 4
+        data = (
+            data.with_columns(
+                pl.when(pl.col("instanced") == 0)
+                .then(pl.lit(repeat_length).alias("repeats"))
+                .otherwise(1)
+            )
+            .select(pl.exclude("repeats").repeat_by("repeats"))
+            .with_columns(
+                pl.when(pl.col("InstanceID").arr.lengths() > 1)
+                .then(list(range(repeat_length)))
+                .otherwise(pl.col("InstanceID"))
+                .alias("InstanceID")
+            )
+            .explode(pl.all())
+        )
+        data = data.drop("instanced")
+
     # Filter rows based on InstanceIDs if provided
-    if config["InstanceIDs"]:
+    if any(config["InstanceIDs"]):
         data = data.filter(pl.col("InstanceID").is_in(config["InstanceIDs"]))
 
     # Filter rows based on ArrayIDs if provided
-    if config["ArrayIDs"]:
+    if any(config["ArrayIDs"]):
         data = data.filter(pl.col("ArrayID").is_in(config["ArrayIDs"]))
 
     # Drop empty strings
@@ -328,8 +358,13 @@ if __name__ == "__main__":
     parser.add_argument("--coding-file", help="UKBB coding file", default="Codings.tsv")
     parser.add_argument(
         "--category-tree-file",
-        help="UKBB Category tree file from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13",
+        help="UKBB Category tree file (Schema 13), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13",
         default="13.txt",
+    )
+    parser.add_argument(
+        "--data-field-prop-file",
+        help="UKBB Data field properties file (Schema 1), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=1",
+        default="1.txt",
     )
     parser.add_argument(
         "--output-prefix", help="Prefix for output files", required=True
@@ -385,6 +420,7 @@ if __name__ == "__main__":
         dictionary_file=args.dictionary_file,
         coding_file=args.coding_file,
         category_tree_file=args.category_tree_file,
+        data_field_prop_file=args.data_field_prop_file,
         verbose=args.verbose,
     )
 

@@ -30,6 +30,7 @@ $ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", separator="\t"
                 "FieldValue": pl.Utf8,
             },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression="zstd")'
 ```
+
 ## Requirements
 
 The python script requires the [polars package](https://github.com/pola-rs/polars)
@@ -39,7 +40,8 @@ The python script requires the [polars package](https://github.com/pola-rs/polar
 Now that you have a `arrow` or `tsv` file ready, you can write a configuration
 file to define the data you would like to extract and run the script.
 
-To choose variables, use the [UKBB Showcase](https://biobank.ndph.ox.ac.uk/showcase/)
+To choose variables, use the [UKBB Showcase](https://biobank.ndph.ox.ac.uk/showcase/) to collect
+`FieldIDs` and `Categories`
 
 Make a copy of [config.template.yaml](config.template.yaml) and set your settings
 as appropriate, see embedded documentation of the file for details.
@@ -47,11 +49,14 @@ as appropriate, see embedded documentation of the file for details.
 You will need the `Codings.tsv` and `Data_Dictionary_Showcase.tsv` from
 [UKBB Showcase Accessing Data](https://biobank.ndph.ox.ac.uk/showcase/exinfo.cgi?src=AccessingData)
 
-And the UKBB Category tree from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13
+UKBB Category tree file (Schema 13), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13
+and
+UKBB Data field properties file (Schema 1), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=1
 
 ### Command-line use
 
-And finally run the script:
+And finally run the script, assuming you have the support files in the local directory:
+
 ```sh
 $ python melted_UKBB_extract.py --config-file myconfig.yaml --data-file current.melt.arrow --output-prefix mysubset_
 ```
@@ -97,8 +102,9 @@ in narrow (and if configured, wide) formats, as well as a filtered version of `C
 and `Data_Dictionary_Showcase.tsv` describing the data.
 
 ## Full Script Options
+
 ```sh
-usage: UKBB Data Extractor [-h] --config-file CONFIG_FILE --data-file DATA_FILE [--dictionary-file DICTIONARY_FILE] [--coding-file CODING_FILE] [--category-tree-file CATEGORY_TREE_FILE] --output-prefix OUTPUT_PREFIX [--output-formats [OUTPUT_FORMATS ...]] [-v]
+usage: UKBB Data Extractor [-h] --config-file CONFIG_FILE --data-file DATA_FILE [--dictionary-file DICTIONARY_FILE] [--coding-file CODING_FILE] [--category-tree-file CATEGORY_TREE_FILE] [--data-field-prop-file DATA_FIELD_PROP_FILE] --output-prefix OUTPUT_PREFIX [--output-formats [OUTPUT_FORMATS ...]] [-v]
 
 Transforms melted UKBB tabular data into a usable DataFrame for statistical analysis
 
@@ -113,7 +119,9 @@ optional arguments:
   --coding-file CODING_FILE
                         UKBB coding file (default: Codings.tsv)
   --category-tree-file CATEGORY_TREE_FILE
-                        UKBB Category tree file from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13 (default: 13.txt)
+                        UKBB Category tree file (Schema 13), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13 (default: 13.txt)
+  --data-field-prop-file DATA_FIELD_PROP_FILE
+                        UKBB Data field properties file (Schema 1), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=1 (default: 1.txt)
   --output-prefix OUTPUT_PREFIX
                         Prefix for output files (default: None)
   --output-formats [OUTPUT_FORMATS ...]
@@ -124,4 +132,3 @@ optional arguments:
 ## TODO
 
 Regarding the return type of `extract_UKBB_tabular_data`, the function should ideally take a generic parameter for config that will determine the return type based on `config['wide']`. However, this is not possible in Python 3.10 ad below, as `TypedDict` cannot inherit from generic types ([see this for more info](https://github.com/python/cpython/issues/89026#issuecomment-1116093221)). Once Once Python 3.10 is no longer supported, this function could be updated with a generic type, so that the signature is inferred based on the value passed in for config.
-

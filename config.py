@@ -32,6 +32,10 @@ class Config(TypedDict):
 
     ## Output control section
 
+    # Replicate non-instanced data (aka Sex, other single-point measurements)
+    # across all instances
+    replicate_non_instanced: bool
+
     # Use data dictionary to recode FieldIDs as <Name>_<FieldID>
     recode_field_names: bool
 

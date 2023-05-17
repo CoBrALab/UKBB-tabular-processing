@@ -17,6 +17,7 @@ def extract_UKBB_tabular_data(
     dictionary_file: str,
     coding_file: str,
     category_tree_file: str = None,
+    data_field_prop_file: str = None,
     verbose: bool = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
     pl.Config.set_verbose(verbose)
@@ -125,6 +126,33 @@ def extract_UKBB_tabular_data(
     # Filter rows in data based on FieldID
     if any(config["FieldIDs"]):
         data = data.filter(pl.col("FieldID").is_in(config["FieldIDs"]))
+
+    if config["replicate_non_instanced"]:
+        # This succesfully duplicates data which should be present in all rows (non-instanced)
+        instanced = pl.scan_csv(data_field_prop_file, separator="\t")
+        data = data.join(
+            instanced.select(["field_id", "instanced"]),
+            left_on="FieldID",
+            right_on="field_id",
+            how="left",
+        )
+        repeat_length = len(config["InstanceIDs"]) if any(config["InstanceIDs"]) else 4
+        data = (
+            data.with_columns(
+                pl.when(pl.col("instanced") == 0)
+                .then(pl.lit(repeat_length).alias("repeats"))
+                .otherwise(1)
+            )
+            .select(pl.exclude("repeats").repeat_by("repeats"))
+            .with_columns(
+                pl.when(pl.col("InstanceID").arr.lengths() > 1)
+                .then(list(range(repeat_length)))
+                .otherwise(pl.col("InstanceID"))
+                .alias("InstanceID")
+            )
+            .explode(pl.all())
+        )
+        data = data.drop("instanced")
 
     # Filter rows based on InstanceIDs if provided
     if any(config["InstanceIDs"]):
@@ -330,8 +358,13 @@ if __name__ == "__main__":
     parser.add_argument("--coding-file", help="UKBB coding file", default="Codings.tsv")
     parser.add_argument(
         "--category-tree-file",
-        help="UKBB Category tree file from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13",
+        help="UKBB Category tree file (Schema 13), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=13",
         default="13.txt",
+    )
+    parser.add_argument(
+        "--data-field-prop-file",
+        help="UKBB Data field properties file (Schema 1), tab-separated from https://biobank.ndph.ox.ac.uk/showcase/schema.cgi?id=1",
+        default="1.txt",
     )
     parser.add_argument(
         "--output-prefix", help="Prefix for output files", required=True
@@ -387,6 +420,7 @@ if __name__ == "__main__":
         dictionary_file=args.dictionary_file,
         coding_file=args.coding_file,
         category_tree_file=args.category_tree_file,
+        data_field_prop_file=args.data_field_prop_file,
         verbose=args.verbose,
     )
 

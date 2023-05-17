@@ -259,12 +259,16 @@ def extract_UKBB_tabular_data(
     data = data.collect(streaming=True)
 
     # Generate a subsetted dictionary and codings
-    dictionary = dictionary.filter(
-        pl.col("FieldID").is_in(config["FieldIDs"])
-    ).collect()
-    codings = codings.filter(
-        pl.col("Coding").is_in(dictionary.get_column("Coding"))
-    ).collect()
+    if any(config["FieldIDs"]):
+        dictionary = dictionary.filter(
+            pl.col("FieldID").is_in(config["FieldIDs"])
+        ).collect()
+        codings = codings.filter(
+            pl.col("Coding").is_in(dictionary.get_column("Coding"))
+        ).collect()
+    else:
+        dictionary = dictionary.collect()
+        codings = codings.collect()
 
     # Code which pivots and manipulates column properties
     if config["wide"]:
@@ -311,14 +315,6 @@ def extract_UKBB_tabular_data(
         return data, data_wide, dictionary, codings
 
     else:
-        # Generate a subsetted dictionary and codings
-        dictionary = dictionary.filter(
-            pl.col("FieldID").is_in(config["FieldIDs"])
-        ).collect()
-        codings = codings.filter(
-            pl.col("Coding").is_in(dictionary.get_column("Coding"))
-        ).collect()
-
         return data, None, dictionary, codings
 
 

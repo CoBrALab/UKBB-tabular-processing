@@ -15,7 +15,7 @@ class Config(TypedDict):
     # List of FieldIDs to extract, null to extract all
     # See Data_Dictionary_Showcase.tsv for a concise list
     # Ex: Sex = 31
-    FieldIDs: list[int]
+    FieldIDs: list[int] | list[None]
 
     # Instance aka timepoint, 1-4, none for all
     InstanceIDs: list[int] | list[None]
@@ -28,7 +28,7 @@ class Config(TypedDict):
     ArrayIDs: list[int] | list[None]
 
     # Use pre-defined Categories of FieldIDs, added to list above, null for none
-    Categories: list[Any]
+    Categories: list[Any] | list[None]
 
     ## Output control section
 

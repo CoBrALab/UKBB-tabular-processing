@@ -34,10 +34,12 @@ def extract_UKBB_tabular_data(
 
     # Fix list of None in case of no specified requirements
     config["SubjectIDs"] = [i for i in config["SubjectIDs"] if i]
+    config["SubjectIDFiles"] = [i for i in config["SubjectIDs"] if i]
     config["FieldIDs"] = [i for i in config["FieldIDs"] if i]
     config["InstanceIDs"] = [i for i in config["InstanceIDs"] if i]
     config["ArrayIDs"] = [i for i in config["ArrayIDs"] if i]
     config["Categories"] = [i for i in config["Categories"] if i]
+
 
     dictionary = pl.scan_csv(
         dictionary_file,
@@ -78,7 +80,7 @@ def extract_UKBB_tabular_data(
         data = pl.scan_ipc(data_file)
 
     # Expand list of IDs from SubjectIDFiles
-    if config["SubjectIDFiles"]:
+    if any(config["SubjectIDFiles"]):
         for file in config["SubjectIDFiles"]:
             try:
                 with open(file, "r") as stream:
@@ -88,11 +90,11 @@ def extract_UKBB_tabular_data(
                 sys.exit(1)
 
     # Filter rows based on SubjectIDs if provided
-    if config["SubjectIDs"]:
+    if any(config["SubjectIDs"]):
         data = data.filter(pl.col("SubjectID").is_in(config["SubjectIDs"]))
 
     # Expand FieldIDs if Categories are provided
-    if config["Categories"]:
+    if any(config["Categories"]):
         logging.info(
             "Categories provided, recursing down Category tree to ensure all FieldIDs are discovered"
         )
@@ -121,15 +123,15 @@ def extract_UKBB_tabular_data(
         logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows in data based on FieldID
-    if config["FieldIDs"]:
+    if any(config["FieldIDs"]):
         data = data.filter(pl.col("FieldID").is_in(config["FieldIDs"]))
 
     # Filter rows based on InstanceIDs if provided
-    if config["InstanceIDs"]:
+    if any(config["InstanceIDs"]):
         data = data.filter(pl.col("InstanceID").is_in(config["InstanceIDs"]))
 
     # Filter rows based on ArrayIDs if provided
-    if config["ArrayIDs"]:
+    if any(config["ArrayIDs"]):
         data = data.filter(pl.col("ArrayID").is_in(config["ArrayIDs"]))
 
     # Drop empty strings

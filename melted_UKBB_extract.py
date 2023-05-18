@@ -173,29 +173,15 @@ def extract_UKBB_tabular_data(
         how="left",
     )
 
-    # Hard-coded list of "no answer" codings to be dropped
-    if config["drop_extra_NA_codes"]:
-        data = data.filter(
-            ~(
-                pl.col("Meaning").is_in(
-                    [
-                        "Do not know",
-                        "Prefer not to answer",
-                        "Time uncertain/unknown",
-                        "Test not completed",
-                        "Location could not be mapped",
-                        "Abandoned",
-                        "Next button not pressed",
-                    ]
-                )
-            )
-        )
-        # Hard coded list of "bad data" numbers to drop
+    if config["drop_null_strings"]:
+        data = data.filter(~(pl.col("Meaning").is_in(config["drop_null_strings"])))
+
+    if config["drop_null_numerics"]:
         data = data.filter(
             ~(
                 pl.col("FieldValue")
                 .cast(pl.Float64, strict=False)
-                .is_in([99999, -9999999, -999999.000, -99999.000])
+                .is_in(config["drop_null_numerics"])
             )
         )
 

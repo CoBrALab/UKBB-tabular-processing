@@ -32,14 +32,6 @@ def extract_UKBB_tabular_data(
         "Compound": pl.Utf8,
     }
 
-    # Fix list of None in case of no specified requirements
-    config["SubjectIDs"] = [i for i in config["SubjectIDs"] if i]
-    config["SubjectIDFiles"] = [i for i in config["SubjectIDFiles"] if i]
-    config["FieldIDs"] = [i for i in config["FieldIDs"] if i]
-    config["InstanceIDs"] = [i for i in config["InstanceIDs"] if i]
-    config["ArrayIDs"] = [i for i in config["ArrayIDs"] if i]
-    config["Categories"] = [i for i in config["Categories"] if i]
-
     dictionary = pl.scan_csv(
         dictionary_file,
         separator="\t",
@@ -79,7 +71,7 @@ def extract_UKBB_tabular_data(
         data = pl.scan_ipc(data_file)
 
     # Expand list of IDs from SubjectIDFiles
-    if any(config["SubjectIDFiles"]):
+    if config["SubjectIDFiles"]:
         for file in config["SubjectIDFiles"]:
             try:
                 with open(file, "r") as stream:
@@ -93,11 +85,11 @@ def extract_UKBB_tabular_data(
         logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows based on SubjectIDs if provided
-    if any(config["SubjectIDs"]):
+    if config["SubjectIDs"]:
         data = data.filter(pl.col("SubjectID").is_in(config["SubjectIDs"]))
 
     # Expand FieldIDs if Categories are provided
-    if any(config["Categories"]):
+    if config["Categories"]:
         logging.info(
             "Categories provided, recursing down Category tree to ensure all FieldIDs are discovered"
         )
@@ -126,7 +118,7 @@ def extract_UKBB_tabular_data(
         logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows in data based on FieldID
-    if any(config["FieldIDs"]):
+    if config["FieldIDs"]:
         data = data.filter(pl.col("FieldID").is_in(config["FieldIDs"]))
 
     if config["replicate_non_instanced"]:
@@ -138,7 +130,7 @@ def extract_UKBB_tabular_data(
             right_on="field_id",
             how="left",
         )
-        repeat_length = len(config["InstanceIDs"]) if any(config["InstanceIDs"]) else 4
+        repeat_length = len(config["InstanceIDs"]) if config["InstanceIDs"] else 4
         data = (
             data.with_columns(
                 pl.when(pl.col("instanced") == 0)
@@ -157,11 +149,11 @@ def extract_UKBB_tabular_data(
         data = data.drop("instanced")
 
     # Filter rows based on InstanceIDs if provided
-    if any(config["InstanceIDs"]):
+    if config["InstanceIDs"]:
         data = data.filter(pl.col("InstanceID").is_in(config["InstanceIDs"]))
 
     # Filter rows based on ArrayIDs if provided
-    if any(config["ArrayIDs"]):
+    if config["ArrayIDs"]:
         data = data.filter(pl.col("ArrayID").is_in(config["ArrayIDs"]))
 
     # Drop empty strings
@@ -181,29 +173,15 @@ def extract_UKBB_tabular_data(
         how="left",
     )
 
-    # Hard-coded list of "no answer" codings to be dropped
-    if config["drop_extra_NA_codes"]:
-        data = data.filter(
-            ~(
-                pl.col("Meaning").is_in(
-                    [
-                        "Do not know",
-                        "Prefer not to answer",
-                        "Time uncertain/unknown",
-                        "Test not completed",
-                        "Location could not be mapped",
-                        "Abandoned",
-                        "Next button not pressed",
-                    ]
-                )
-            )
-        )
-        # Hard coded list of "bad data" numbers to drop
+    if config["drop_null_strings"]:
+        data = data.filter(~(pl.col("Meaning").is_in(config["drop_null_strings"])))
+
+    if config["drop_null_numerics"]:
         data = data.filter(
             ~(
                 pl.col("FieldValue")
                 .cast(pl.Float64, strict=False)
-                .is_in([99999, -9999999, -999999.000, -99999.000])
+                .is_in(config["drop_null_numerics"])
             )
         )
 
@@ -259,7 +237,7 @@ def extract_UKBB_tabular_data(
     data = data.collect(streaming=True)
 
     # Generate a subsetted dictionary and codings
-    if any(config["FieldIDs"]):
+    if config["FieldIDs"]:
         dictionary = dictionary.filter(
             pl.col("FieldID").is_in(config["FieldIDs"])
         ).collect()

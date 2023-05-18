@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any, TypedDict
+from typing import TypedDict
 
 import yaml
 
@@ -28,7 +28,7 @@ class Config(TypedDict):
     ArrayIDs: list[int] | list[None]
 
     # Use pre-defined Categories of FieldIDs, added to list above, null for none
-    Categories: list[Any] | list[None]
+    Categories: list[int] | list[None]
 
     ## Output control section
 
@@ -45,9 +45,9 @@ class Config(TypedDict):
     # Some FieldValues were saved as empty strings instead of NA, drop these
     drop_empty_strings: bool
 
-    # Drop responses such as "Do not Know" and "Prefer not to answer"
-    # See code for complete list
-    drop_extra_NA_codes: bool
+    # List of string responses to map to Null
+    drop_null_strings: list[str] | list[None]
+    drop_null_numerics: list[float] | list[None]
 
     ## Wide output control
 
@@ -73,7 +73,11 @@ def load_config(config_file: str) -> Config:
     try:
         with open(config_file, "r") as stream:
             try:
-                return yaml.safe_load(stream)
+                tempdict = yaml.safe_load(stream)
+                for key in tempdict.keys():
+                    if isinstance(tempdict[key], list):
+                        tempdict[key] = [i for i in tempdict[key] if i is not None]
+                return tempdict
             except yaml.YAMLError as exc:
                 logging.exception(exc)
                 sys.exit(1)

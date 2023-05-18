@@ -38,9 +38,25 @@ recode_data_values: true
 # Some FieldValues were saved as empty strings instead of NA, drop these
 drop_empty_strings: true
 
-# Drop responses such as "Do not Know" and "Prefer not to answer"
-# See code for complete list
-drop_extra_NA_codes: true
+# Strings to drop as null
+drop_null_strings:
+  - "Do not know"
+  - "Prefer not to answer"
+  - "Time uncertain/unknown"
+  - "Test not completed"
+  - "Location could not be mapped"
+  - "Abandoned"
+  - "Next button not pressed"
+  - "Trail not completed"
+  - "Do not remember"
+  - "Preferred not to answer"
+
+# Numeric vaues to map to null
+drop_null_numerics:
+  - 99999
+  - -9999999
+  - -999999.000
+  - -99999.000
 
 ## Wide output control
 

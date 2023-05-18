@@ -73,7 +73,11 @@ def load_config(config_file: str) -> Config:
     try:
         with open(config_file, "r") as stream:
             try:
-                return yaml.safe_load(stream)
+                tempdict = yaml.safe_load(stream)
+                for key in tempdict.keys():
+                    if isinstance(tempdict[key], list):
+                        tempdict[key] = [i for i in tempdict[key] if i is not None]
+                return tempdict
             except yaml.YAMLError as exc:
                 logging.exception(exc)
                 sys.exit(1)

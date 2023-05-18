@@ -32,14 +32,6 @@ def extract_UKBB_tabular_data(
         "Compound": pl.Utf8,
     }
 
-    # Fix list of None in case of no specified requirements
-    config["SubjectIDs"] = [i for i in config["SubjectIDs"] if i]
-    config["SubjectIDFiles"] = [i for i in config["SubjectIDFiles"] if i]
-    config["FieldIDs"] = [i for i in config["FieldIDs"] if i]
-    config["InstanceIDs"] = [i for i in config["InstanceIDs"] if i]
-    config["ArrayIDs"] = [i for i in config["ArrayIDs"] if i]
-    config["Categories"] = [i for i in config["Categories"] if i]
-
     dictionary = pl.scan_csv(
         dictionary_file,
         separator="\t",

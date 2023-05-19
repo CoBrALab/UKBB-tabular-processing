@@ -109,7 +109,7 @@ def extract_UKBB_tabular_data(
         config["FieldIDs"].extend(
             dictionary.filter(pl.col("Category").is_in(config["Categories"]))
             .select("FieldID")
-            .collect()
+            .collect(streaming=True, no_optimization=True)
             .to_series()
             .to_list()
         )
@@ -174,7 +174,7 @@ def extract_UKBB_tabular_data(
     )
 
     if config["drop_null_strings"]:
-        data = data.filter(~(pl.col("Meaning").is_in(config["drop_null_strings"])))
+        data = data.filter(~pl.col("Meaning").is_in(config["drop_null_strings"]))
 
     if config["drop_null_numerics"]:
         data = data.filter(
@@ -188,7 +188,10 @@ def extract_UKBB_tabular_data(
     # Take coding values and replace FieldValue with it if available
     if config["recode_data_values"]:
         data = data.with_columns(
-            pl.col("Meaning").fill_null(pl.col("FieldValue")).alias("FieldValue")
+            pl.when(pl.col("Meaning").is_not_null())
+            .then(pl.col("Meaning"))
+            .otherwise(pl.col("FieldValue"))
+            .alias("FieldValue")
         )
 
     # Take coding values which start with "Less than" and replace with a numeric
@@ -234,19 +237,19 @@ def extract_UKBB_tabular_data(
     data = data.select(["SubjectID", "InstanceID", "ArrayID", "FieldID", "FieldValue"])
 
     logging.info(f"Loading data from {data_file}")
-    data = data.collect(streaming=True)
+    data = data.collect(streaming=True, no_optimization=True)
 
     # Generate a subsetted dictionary and codings
     if config["FieldIDs"]:
         dictionary = dictionary.filter(
             pl.col("FieldID").is_in(config["FieldIDs"])
-        ).collect()
+        ).collect(streaming=True, no_optimization=True)
         codings = codings.filter(
             pl.col("Coding").is_in(dictionary.get_column("Coding"))
-        ).collect()
+        ).collect(streaming=True, no_optimization=True)
     else:
-        dictionary = dictionary.collect()
-        codings = codings.collect()
+        dictionary = dictionary.collect(streaming=True, no_optimization=True)
+        codings = codings.collect(streaming=True, no_optimization=True)
 
     # Code which pivots and manipulates column properties
     if config["wide"]:

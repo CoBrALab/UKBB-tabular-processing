@@ -221,10 +221,6 @@ def extract_UKBB_tabular_data(
             ]
         )
 
-    data = data.drop("Coding")
-    data = data.drop("ValueType")
-    data = data.drop("Meaning")
-
     # Replace FieldID with concatenation of FieldID and Field
     if config["recode_field_names"]:
         data = data.with_columns(

@@ -31,9 +31,15 @@ $ python -c 'import polars as pl; pl.scan_csv("current.melt.tsv", separator="\t"
             },  encoding="utf8-lossy").sink_ipc("current.melt.arrow", compression="zstd")'
 ```
 
-## Requirements
+## Requirements/Dependencies
 
-The python script requires the [polars package](https://github.com/pola-rs/polars)
+This package requires at least python 3.9 due to static typing.
+
+The python script requires the [polars package](https://github.com/pola-rs/polars) for data handling
+
+An [PyYAML](https://pypi.org/project/PyYAML/) to load config files.
+
+See `requirements.txt` for versions.
 
 ## Extracting data
 

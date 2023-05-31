@@ -7,7 +7,7 @@
 FieldIDs:
 # Ex: Sex
   - 31
-# Instance aka timepoint, 1-4, null for all
+# Instance aka timepoint, 0--3, null for all
 InstanceIDs:
   - null
 # Specific subjects to extract, null for all

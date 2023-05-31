@@ -247,8 +247,8 @@ def extract_UKBB_tabular_data(
         dictionary = dictionary.collect(streaming=True, no_optimization=True)
         codings = codings.collect(streaming=True, no_optimization=True)
 
-    data = data.with_columns(pl.col("InstanceID").cast(pl.Categorical))
-    data = data.with_columns(pl.col("ArrayID").cast(pl.Categorical))
+    data = data.with_columns(pl.col("InstanceID").cast(pl.Utf8).cast(pl.Categorical))
+    data = data.with_columns(pl.col("ArrayID").cast(pl.Utf8).cast(pl.Categorical))
 
     # Code which pivots and manipulates column properties
     if config["wide"]:

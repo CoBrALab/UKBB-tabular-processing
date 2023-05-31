@@ -122,7 +122,7 @@ def extract_UKBB_tabular_data(
         data = data.filter(pl.col("FieldID").is_in(config["FieldIDs"]))
 
     if config["replicate_non_instanced"]:
-        # This succesfully duplicates data which should be present in all rows (non-instanced)
+        # This successfully duplicates data which should be present in all rows (non-instanced)
         instanced = pl.scan_csv(data_field_prop_file, separator="\t")
         data = data.join(
             instanced.select(["field_id", "instanced"]),
@@ -130,17 +130,17 @@ def extract_UKBB_tabular_data(
             right_on="field_id",
             how="left",
         )
-        repeat_length = len(config["InstanceIDs"]) if config["InstanceIDs"] else 4
+        repeat_instances = config["InstanceIDs"] if config["InstanceIDs"] else list(range(4))
         data = (
             data.with_columns(
                 pl.when(pl.col("instanced") == 0)
-                .then(pl.lit(repeat_length).alias("repeats"))
+                .then(pl.lit(len(repeat_instances)).alias("repeats"))
                 .otherwise(1)
             )
             .select(pl.exclude("repeats").repeat_by("repeats"))
             .with_columns(
                 pl.when(pl.col("InstanceID").arr.lengths() > 1)
-                .then(list(range(repeat_length)))
+                .then(repeat_instances)
                 .otherwise(pl.col("InstanceID"))
                 .alias("InstanceID")
             )

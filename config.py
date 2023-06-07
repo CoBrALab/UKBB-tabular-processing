@@ -10,6 +10,7 @@ import yaml
 
 from validation import all_items_match_type, get_type_name, parse_list_item_types
 
+
 class Config(TypedDict):
     """defines the structure of the config dict to be passed to the function extract_UKBB_tabular_data"""
 
@@ -70,6 +71,7 @@ class Config(TypedDict):
     convert_less_than_value_integer: int | None
     convert_less_than_value_continuous: int | float | None
 
+
 def load_config(config_file: str) -> Config:
     """Returns a config dict loaded from a YAML file. It is assumed the format is correct"""
 
@@ -80,13 +82,14 @@ def load_config(config_file: str) -> Config:
     except (FileNotFoundError, yaml.YAMLError) as exc:
         logging.exception(exc)
         sys.exit(1)
-    
+
     # Validate the format of the loaded data
     if not isinstance(data, dict):
-        raise TypeError(f"Invalid format of configuration file '{config_file}', received type '{get_type_name(data)}' not 'dict'")
-    
-    for key, value_type in get_type_hints(Config).items():
+        raise TypeError(
+            f"Invalid format of configuration file '{config_file}', received type '{get_type_name(data)}' not 'dict'"
+        )
 
+    for key, value_type in get_type_hints(Config).items():
         # Make sure the key exists in the config
         if key not in data:
             raise ValueError(f"Config object does not contain required key: '{key}'")
@@ -96,22 +99,26 @@ def load_config(config_file: str) -> Config:
             valid_types = tuple(get_origin(x) or x for x in get_args(value_type))
         else:
             valid_types = value_type
-        
+
         # See if the type is one of the possible base types (e.g, list, string)
         is_base_type = isinstance(data[key], valid_types)
         if not is_base_type:
-            raise TypeError(f"Invalid type for '{key}', expected one of {[x.__name__ for x in valid_types]}, got '{get_type_name(data[key])}'")
-        
+            raise TypeError(
+                f"Invalid type for '{key}', expected one of {[x.__name__ for x in valid_types]}, got '{get_type_name(data[key])}'"
+            )
+
         if isinstance(data[key], list):
-            assert isinstance(value_type, UnionType), "Unless something changes, all lists are union type"
+            assert isinstance(
+                value_type, UnionType
+            ), "Unless something changes, all lists are union type"
 
             # We need to get all of the possible types for the items in the list
             valid_item_types = parse_list_item_types(value_type)
-            
+
             # For each type, all of the items in the list must be that type
             all_items_match_type(data[key], valid_item_types)
 
             # Filter none in any case, as this was the behavior written by Gabe before
             data[key] = [i for i in data[key] if i is not None]
-    
+
     return cast(Config, data)

@@ -130,7 +130,9 @@ def extract_UKBB_tabular_data(
             right_on="field_id",
             how="left",
         )
-        repeat_instances = config["InstanceIDs"] if config["InstanceIDs"] else list(range(4))
+        repeat_instances = (
+            config["InstanceIDs"] if config["InstanceIDs"] else list(range(4))
+        )
         data = (
             data.with_columns(
                 pl.when(pl.col("instanced") == 0)

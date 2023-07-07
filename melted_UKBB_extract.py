@@ -139,7 +139,7 @@ def extract_UKBB_tabular_data(
             )
             .select(pl.exclude("repeats").repeat_by("repeats"))
             .with_columns(
-                pl.when(pl.col("InstanceID").arr.lengths() > 1)
+                pl.when(pl.col("InstanceID").list.lengths() > 1)
                 .then(repeat_instances)
                 .otherwise(pl.col("InstanceID"))
                 .alias("InstanceID")

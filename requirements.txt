@@ -1,2 +1,2 @@
-polars>=0.17.2
+polars>=0.18.0
 PyYAML>=6.0

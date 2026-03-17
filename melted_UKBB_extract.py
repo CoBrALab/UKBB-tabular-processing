@@ -6,6 +6,7 @@ import pathlib as p
 import sys
 
 import polars as pl
+from pprint import pprint
 
 from config import Config, load_config
 

@@ -1,12 +1,35 @@
 #!/usr/bin/env python
+"""
+UKBB Tabular Data Extraction Tool
+
+This module transforms melted UK Biobank tabular data into analysis-ready formats.
+The data pipeline processes UKBB .tab files that have been converted from ultra-wide
+to long/melted format by the AWK preprocessor (ukb_awk/melt_tab.awk).
+
+The module supports:
+- Filtering by SubjectID, FieldID, InstanceID, ArrayID, and hierarchical Categories
+- Value recoding using UKBB data dictionary and coding mappings
+- Optional pivoting to wide format with proper type assignment
+- Output to TSV, Arrow/Feather, Parquet, or CSV formats
+
+Input data can be in TSV format or compressed binary Arrow format.
+All processing uses Polars LazyFrames with streaming for memory efficiency.
+
+Required UKBB Showcase files:
+- Data_Dictionary_Showcase.tsv: Field metadata (FieldID, Field, ValueType, Coding)
+- Codings.tsv: Value encoding mappings (Coding, Value, Meaning)
+- 13.txt: Category tree for hierarchical field selection (parent_id, child_id)
+- 1.txt: Data field properties for instanced field detection (field_id, instanced)
+"""
 from __future__ import annotations
 
 import logging
 import pathlib as p
 import sys
 
+import pprint
+
 import polars as pl
-from pprint import pprint
 
 from config import Config, load_config
 
@@ -20,8 +43,91 @@ def extract_UKBB_tabular_data(
     data_field_prop_file: str = None,
     verbose: bool = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame | None, pl.DataFrame, pl.DataFrame]:
+    """
+    Extract, filter, and transform UK Biobank tabular data.
+
+    This function processes melted UKBB data through a pipeline of filtering,
+    recoding, and optional pivoting operations. All operations use Polars
+    LazyFrames with streaming for memory efficiency on large datasets.
+
+    Parameters
+    ----------
+    config : Config
+        Configuration dictionary specifying filtering and transformation options.
+        See config.py for the complete schema. Key options include:
+        - FieldIDs, InstanceIDs, SubjectIDs, ArrayIDs: Filter conditions
+        - Categories: Hierarchical field selection (expanded recursively)
+        - replicate_non_instanced: Duplicate non-instanced fields across instances
+        - recode_data_values: Replace coded values with decoded meanings
+        - wide: Pivot to wide format with FieldID as columns
+
+    data_file : str
+        Path to input data file. Supports:
+        - .tsv: Tab-separated values (melted format)
+        - .arrow/.feather: Compressed binary Arrow format
+
+    dictionary_file : str
+        Path to UKBB Data Dictionary Showcase TSV. Required columns:
+        FieldID, Field, ValueType, Coding, Category
+
+    coding_file : str
+        Path to UKBB Codings TSV. Required columns:
+        Coding, Value, Meaning
+
+    category_tree_file : str, optional
+        Path to UKBB Category tree (Schema 13). Required when config
+        contains Categories. Format: parent_id, child_id (tab-separated)
+
+    data_field_prop_file : str, optional
+        Path to UKBB Data field properties (Schema 1). Required when
+        replicate_non_instanced=True. Format: field_id, instanced
+
+    verbose : bool, default=False
+        Enable verbose Polars output for debugging
+
+    Returns
+    -------
+    tuple containing:
+        - data_narrow : pl.DataFrame
+            Filtered long format data with columns:
+            SubjectID, InstanceID, ArrayID, FieldID, FieldValue
+        - data_wide : pl.DataFrame or None
+            Pivoted wide format if config['wide']=True, otherwise None.
+            Columns are SubjectID, InstanceID, ArrayID, plus one column
+            per FieldID with proper typing applied
+        - dictionary : pl.DataFrame
+            Subset of data dictionary matching extracted FieldIDs
+        - codings : pl.DataFrame
+            Subset of codings used in extracted data
+
+    Notes
+    -----
+    Processing Strategy:
+    - Uses Polars LazyFrames with streaming=True and no_optimization=True
+      throughout for memory efficiency on datasets exceeding RAM capacity
+    - Category expansion recursively traverses the category tree to find
+      all descendant FieldIDs
+    - Non-instanced fields (e.g., Sex) exist only once per subject in the
+      raw data but can be replicated across all instances when requested
+    - InstanceID and ArrayID are cast to Categorical after collection
+      to reduce memory usage
+
+    Examples
+    --------
+    >>> config = load_config("myconfig.yaml")
+    >>> narrow, wide, dict_, codings = extract_UKBB_tabular_data(
+    ...     config=config,
+    ...     data_file="current.melt.arrow",
+    ...     dictionary_file="Data_Dictionary_Showcase.tsv",
+    ...     coding_file="Codings.tsv",
+    ...     category_tree_file="13.txt",
+    ...     data_field_prop_file="1.txt"
+    ... )
+    """
     pl.Config.set_verbose(verbose)
 
+    # Mapping of UKBB ValueType strings to Polars data types
+    # Used when recode_wide_column_valuetypes=True to properly type pivoted columns
     datatype_dictionary = {
         "Date": pl.Date,
         "Time": pl.Datetime,
@@ -70,6 +176,9 @@ def extract_UKBB_tabular_data(
         )
     elif file_extension in [".arrow", ".feather"]:
         data = pl.scan_ipc(data_file)
+    else:
+        logging.error(f"Unsupported file extension: {file_extension}")
+        sys.exit(1)
 
     # Expand list of IDs from SubjectIDFiles
     if config["SubjectIDFiles"]:
@@ -82,7 +191,7 @@ def extract_UKBB_tabular_data(
             except FileNotFoundError as exc:
                 logging.exception(exc)
                 sys.exit(1)
-        logging.info("Input configuration after loading SubectIDFiles")
+        logging.info("Input configuration after loading SubjectIDFiles")
         logging.info(pprint.pformat(config, compact=True))
 
     # Filter rows based on SubjectIDs if provided
@@ -94,7 +203,9 @@ def extract_UKBB_tabular_data(
         logging.info(
             "Categories provided, recursing down Category tree to ensure all FieldIDs are discovered"
         )
-        # UKBB categories are a tree, and data can be on any branch, need to recurse the tree
+        # UKBB categories form a hierarchical tree. This loop recursively finds
+        # all descendants of the specified categories by iterating until no new
+        # children are discovered (the Categories list stops growing).
         category_tree = pl.read_csv(category_tree_file, separator="\t")
         old_length = 0
         while len(config["Categories"]) > old_length:
@@ -107,6 +218,8 @@ def extract_UKBB_tabular_data(
                 .get_column("child_id")
                 .to_list()
             )
+        # After collecting all descendant category IDs, find all FieldIDs
+        # belonging to those categories and add them to the filter list
         config["FieldIDs"].extend(
             dictionary.filter(pl.col("Category").is_in(config["Categories"]))
             .select("FieldID")
@@ -114,6 +227,7 @@ def extract_UKBB_tabular_data(
             .to_series()
             .to_list()
         )
+        config["FieldIDs"] = list(dict.fromkeys(config["FieldIDs"]))
         # Print the loaded config
         logging.info("Input configuration after Category expansion")
         logging.info(pprint.pformat(config, compact=True))
@@ -123,7 +237,16 @@ def extract_UKBB_tabular_data(
         data = data.filter(pl.col("FieldID").is_in(config["FieldIDs"]))
 
     if config["replicate_non_instanced"]:
-        # This successfully duplicates data which should be present in all rows (non-instanced)
+        # Some UKBB fields (e.g., Sex, genetic sex) are non-instanced, meaning they
+        # exist only once per subject rather than at each assessment instance.
+        # This section replicates those single values across all instances.
+        #
+        # Strategy:
+        # 1. Join with field properties to identify which fields are instanced (instanced=1)
+        #    vs non-instanced (instanced=0)
+        # 2. For non-instanced rows, repeat the row N times where N = number of instances
+        # 3. Assign sequential instance IDs to the repeated rows
+        # 4. Explode lists back to regular rows
         instanced = pl.scan_csv(data_field_prop_file, separator="\t")
         data = data.join(
             instanced.select(["field_id", "instanced"]),
@@ -251,7 +374,8 @@ def extract_UKBB_tabular_data(
     data = data.with_columns(pl.col("InstanceID").cast(pl.Utf8).cast(pl.Categorical))
     data = data.with_columns(pl.col("ArrayID").cast(pl.Utf8).cast(pl.Categorical))
 
-    # Code which pivots and manipulates column properties
+    # Optional wide format output: pivot from long to wide format
+    # Each unique FieldID becomes a column, with one row per subject/instance/array
     if config["wide"]:
         logging.info("Pivoting narrow DataFrame to wide")
         data_wide = data.pivot(
@@ -262,7 +386,11 @@ def extract_UKBB_tabular_data(
         )
 
         if config["recode_wide_column_valuetypes"]:
-            # Loop over new columns and map ValueTypes to them using a predefined dictionary
+            # After pivoting, all columns are strings. This section assigns proper
+            # data types based on the UKBB ValueType field from the data dictionary.
+            #
+            # Note: Column names may be FieldID only or Field_FieldID depending on
+            # recode_field_names config, so we extract the numeric ID from the end.
             logging.info("Setting data types on columns")
             for col in data_wide.columns[3:]:
                 val_type = (
@@ -282,6 +410,7 @@ def extract_UKBB_tabular_data(
                             pl.col(col).str.strptime(pl.Datetime)
                         )
                     elif val_type == "Compound" and config["convert_compound_to_list"]:
+                        # Compound fields contain comma-separated values
                         data_wide = data_wide.with_columns(pl.col(col).str.split(","))
                     else:
                         data_wide = data_wide.with_columns(
@@ -301,8 +430,6 @@ def extract_UKBB_tabular_data(
 
 if __name__ == "__main__":
     import argparse
-    import pprint
-    import sys
 
     parser = argparse.ArgumentParser(
         prog="UKBB Data Extractor",
@@ -350,6 +477,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    logging.basicConfig(
+        format="%(asctime)s %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+        level=logging.DEBUG,
+        handlers=[
+            logging.FileHandler(f"{args.output_prefix}conversion.log", mode="w"),
+            logging.StreamHandler(),
+        ],
+    )
+
     unknown_output_formats = set(args.output_formats).difference(
         {"tsv", "csv", "arrow", "parquet", "feather"}
     )
@@ -360,19 +497,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if "csv" in args.output_formats:
-        logging.warn(
+        logging.warning(
             "Due to embedded quotes in some fields, CSV format is not recommended"
         )
-
-    logging.basicConfig(
-        format="%(asctime)s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-        level=logging.DEBUG,
-        handlers=[
-            logging.FileHandler(f"{args.output_prefix}conversion.log", mode="w"),
-            logging.StreamHandler(),
-        ],
-    )
 
     config = load_config(args.config_file)
 
@@ -417,10 +544,10 @@ if __name__ == "__main__":
             if format == "tsv":
                 logging.info(f"Writing {args.output_prefix}wide.tsv")
                 data_wide.write_csv(f"{args.output_prefix}wide.tsv", separator="\t")
-            elif format == "arrow":
-                logging.info(f"Writing {args.output_prefix}wide.arrow")
+            elif format == "arrow" or format == "feather":
+                logging.info(f"Writing {args.output_prefix}wide.{format}")
                 data_wide.write_ipc(
-                    f"{args.output_prefix}wide.arrow", compression="zstd"
+                    f"{args.output_prefix}wide.{format}", compression="zstd"
                 )
             elif format == "parquet":
                 logging.info(f"Writing {args.output_prefix}wide.parquet")

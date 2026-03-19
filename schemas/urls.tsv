@@ -1,0 +1,29 @@
+Schema	Description
+27	Applications (researcher projects)
+3	Categories used to group data fields and other objects on Showcase interface
+13	Category browse tree structure
+18	Columns of data in Record tables
+1	Data field properties
+14	Data field recommendations
+16	Data field summary
+2	Encoding dictionaries
+15	Genotyped SNPs
+9	Instancing dictionaries
+24	Links between Applications and Publications
+26	Links between Categories and Resources
+25	Links between Fields and Resources
+19	Publications
+17	Record tables available via data portal
+21	Related data field linkages
+23	Resources (external)
+22	Resources (internal)
+4	Returned datasets from Applications
+999	Schema provided for the Showcase service
+11	Values for hierarchical integer encodings
+12	Values for hierarchical string encodings
+10	Values for instances
+8	Values for simple date encodings
+5	Values for simple integer encodings
+7	Values for simple real (floating-point) encodings
+6	Values for simple string encodings
+20	Values for simple time encodings
